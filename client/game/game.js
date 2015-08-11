@@ -1,7 +1,15 @@
 angular.module('app.game', [])
-  .controller('gameController', function($scope, $timeout, $interval, $http, gameOver, trackScore){
+  .controller('gameController', function($scope, $timeout, $interval, $http, $state, gameOver, trackScore){
     angular.extend($scope, gameOver);
     $scope.challangeFixtures;
+    $scope.sessionId;
+
+    // requests a new session id from the database
+    // this should be modularized into a factory method
+    $http.post('/api/sessions')
+    .then(function(res){
+      $scope.sessionId = res.session;
+    });
 
     // simulates get request by accessing challengeFixtures.JSON file
     $http.get('challengeFixtures.JSON')
@@ -24,7 +32,8 @@ angular.module('app.game', [])
         if ($scope.timeLimit === 0){
           $interval.cancel(stop);
           $scope.gameOver = true;
-          gameOver.checkScore($scope.totalScore);
+          trackScore.totalScore += $scope.totalScore.totalScore;
+          $state.transitionTo('setInitials');
         }
       }, 1000);
     };
@@ -68,16 +77,20 @@ angular.module('app.game', [])
   })
   .factory('gameOver', function($http, $state){
     var obj = {};
+
+    obj.session;
+
     obj.checkScore = function(playerScore) {
-      $http.get('/api/minHighscore')
+      $http.get('/api/minHighscore', {session: obj.session})
         .then(function(res){
           var minHighscore = res.data;
-          if (playerScore.totalScore < minHighscore) {
-            $state.transitionTo('leaderboard');
+          if (playerScore.totalScore < minHighscore || minHighscore === undefined) {
+            return false;
           } else {
-            $state.transitionTo('setInitials');
+            return true;
           }
-        })
+        });
+      // todo: change to a promise that resolves or rejects
     };
 
     return obj;

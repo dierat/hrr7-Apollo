@@ -28,6 +28,7 @@ app.use(methodOverride());
 var User = require('./users/userModel.js');
 var Game = require('./games/gameModel.js');
 var ChallengeBatch = require('./challengeBatches/challengeBatchModel.js');
+var security = require('./security/sessionAuthorization.js'); // ** ADDED **
 
 
 ///////////
@@ -70,7 +71,7 @@ app.get('/api/minHighscore', function (req, res){
 });
 
 // GAMES
-app.post('/api/games', function (req, res){
+app.post('/api/games', security.checkSession /* added */, function (req, res){
   var game = new Game();
   game.initials = req.body.initials;
   game.highscore = req.body.highscore;
@@ -113,6 +114,25 @@ app.get('/api/challengeBatch/:id', function (req, res){
       }
 
       res.json(batch);
+  });
+});
+
+
+// Session Model - ADDED
+var Session = require('./security/sessionModel.js');
+
+// SESSIONS - ADDED
+app.post('/api/sessions', function (req, res){
+  var session = new Session();
+  session.date = new Date();
+
+  session.save(function(err){
+    if (err) {
+      console.log('ERROR:', err);
+      res.send(err);
+    }
+
+    res.json( {session: session._id} );
   });
 });
 
