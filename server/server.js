@@ -72,19 +72,23 @@ app.get('/api/minHighscore', function (req, res){
 
 // GAMES
 app.post('/api/games', security.checkSession /* added */, function (req, res){
-  var game = new Game();
-  game.initials = req.body.initials;
-  game.highscore = req.body.highscore;
-  game.date = new Date();
+  // find entry in Session collection with session id for total score
+  Session.findOne({_id: req.body.session})
+    .exec(function(err, session){
+      // save it to the Games collection for the leaderboard
+      var game = new Game();
+      game.initials = req.body.initials;
+      game.highscore = session.currentScore;
+      game.date = new Date();
+      game.save(function(err){
+        if (err) {
+          console.log('ERROR:', err);
+          res.send(err);
+        }
+        res.json(game);
+      });
 
-  game.save(function(err){
-    if (err) {
-      console.log('ERROR:', err);
-      res.send(err);
-    }
-
-    res.json(game);
-  });
+    });
 });
 
 // LEADERBOARD

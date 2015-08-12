@@ -5,13 +5,14 @@ var app = express();
 // Session Model
 var Session = require('./sessionModel.js');
 
-// authentication middleware that checks to see if the key exists in the sessions collection before posting scores to the Game collection
+// authentication middleware that checks to see if the score we've received is in the valid range before posting scores to the Game collection
 exports.checkSession = function(req, res, next){
-  Session.find({_id: req.body.session}).count({}, function(err, count){
-    if (count > 0) {
+  Session.findOne({_id: req.body.session}).exec(function(err, session){
+    // please note that if the challenges are changed to not all have the same timeLimit, you will need to add up the timeLimits of the challenges that the user has already completed and check the res.score against that total
+    if (req.body.score < (session.level * 90) ) {
       next();
     } else {
-      res.status(401).send('Not allowed');
+      res.send(400);
     }
   });
 };
