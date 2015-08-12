@@ -123,17 +123,48 @@ var Session = require('./security/sessionModel.js');
 
 // SESSIONS - ADDED
 app.post('/api/sessions', function (req, res){
-  var session = new Session();
-  session.date = new Date();
-
-  session.save(function(err){
-    if (err) {
-      console.log('ERROR:', err);
-      res.send(err);
-    }
-
-    res.json( {session: session._id} );
-  });
+  // if there is no session id and no score sent with the request, insert a new session entry
+  if (!req.body.session && !req.body.score){
+    var session = new Session();
+    session.date = new Date();
+    session.level = 0;
+    session.currentScore = 0;
+    session.save(function(err){
+      if (err) {
+        console.log('ERROR:', err);
+        res.send(err);
+      }
+      res.json( {session: session._id} );
+    });
+  // if it's missing either the score or the id, or the score is higher than what the game allows, send back a 'Bad Request' response
+  // please note that if the timeLimits of the various challenges are not all the same, this last check will need to happen after you've gotten the existing entry out of the database so you can see what level the user was last on and check that against the timeLimit of that level's challenge
+  } else if (!req.body.session || !req.body.score || req.body.score >= 90){
+    res.send(400);
+  // else update the score in the collection entry of the id
+  } else {
+    var query = {
+      _id: req.body.session
+    };
+    // get existing document so we can get the current values and update them
+    Session.findOne(query)
+      .exec(function(err, session){
+        if (err) {
+          console.log('ERROR:', err);
+          res.end(err);
+        }
+        var totalScore = session.currentScore + +req.body.score;
+        var level = session.level + 1;
+        var insert = {
+          currentScore: totalScore,
+          level: level
+        };
+        Session.findOneAndUpdate(query, insert, function(err, doc){
+          if (err) return res.send(500, { error: err });
+          // send the total score back to the client
+          return res.json(totalScore);
+        });
+      });
+  }
 });
 
 
